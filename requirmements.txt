@@ -1,6 +1,7 @@
-SimPy
+SimPy==4.0.2
 numpy
 matplotlib
 pandas
 streamlit
+
 
