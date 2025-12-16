@@ -1,5 +1,6 @@
-simpy
+SimPy
 numpy
 matplotlib
 pandas
+
 streamlit
