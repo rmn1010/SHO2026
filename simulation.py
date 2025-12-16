@@ -7,7 +7,7 @@ import pandas as pd
 import streamlit as st
 
 # --- 1. PARAMETRE SIMULÁCIE (KONŠTANTY) ---
-
+### TEST FIX ###)
 SIM_DURATION = 5000         # Simulácia 5000 minút
 COST_PER_HOUR_WAITING = 60  # Náklady na čakanie (1 €/min)
 COST_PER_HOUR_SERVER = 20   # Náklady na 1 obsluhujúceho pracovníka (0.33 €/min)
@@ -190,4 +190,5 @@ if __name__ == '__main__':
         st.button("Chcem hĺbkovú optimalizáciu a presnú kalkuláciu úspor")
 
     else:
+
         st.error("Žiadny serverový variant nebol stabilný. Skúste zmeniť vstupné parametre (napr. spomaľte príchody alebo skráťte obsluhu).")
