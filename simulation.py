@@ -99,3 +99,17 @@ with tab3:
     st.dataframe(df_export, use_container_width=True)
     st.download_button("Exportovať do Excelu (CSV)", df_export.to_csv().encode('utf-8'), "report.csv")
 
+# --- NOVINKA: EKONOMICKÝ DOPAD ---
+st.subheader("💰 Ekonomická analýza")
+
+cost_per_hour = 80  # Náklady na čakanie kamiónu v €/hod
+total_wait_hours = np.sum(wait_times) / 60
+total_cost = total_wait_hours * cost_per_hour
+
+c1, c2 = st.columns(2)
+c1.metric("Celkové náklady na prestoje", f"{total_cost:.2f} €", delta="Náklady na zmenu")
+c2.info(f"""
+    **Prečo je to dôležité?**
+    Pri aktuálnom nastavení stratí firma denne **{total_cost:.2f} €** len tým, 
+    že kamióny stoja v rade. Ročne (250 prac. dní) je to **{total_cost * 250:,.0f} €**.
+""")
