@@ -4,81 +4,97 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-# 1. NASTAVENIE STRÁNKY (Musí byť ako prvý príkaz Streamlitu)
-st.set_page_config(page_title="Optimalizácia Logistiky", layout="wide")
+# --- KONFIGURÁCIA ---
+st.set_page_config(page_title="Logistics Optimizer PRO", layout="wide", initial_sidebar_state="expanded")
 
-# 2. BOČNÝ PANEL (SIDEBAR) - Tu sme presunuli ovládanie
+# --- ŠTÝL (CSS) pre lepšie farby ---
+st.markdown("""
+    <style>
+    .main { background-color: #f5f7f9; }
+    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    </style>
+    """, unsafe_all_tags=True)
+
+# --- SIDEBAR ---
 with st.sidebar:
-    st.header("⚙️ Nastavenia Simulácie")
-    num_ramps = st.slider("Počet obslužných rámp", 1, 10, 3)
-    arrival_rate = st.slider("Intenzita príchodov (vozidlá/h)", 5, 100, 20)
-    avg_service_time = st.slider("Priemerný čas obsluhy (min)", 5, 60, 15)
-    sim_time = 480  # 8-hodinová zmena v minútach
-    
-    st.info("Upravte parametre a sledovať zmeny v reálnom čase.")
-
-# 3. HLAVNÁ PLOCHA
-st.title("🚛 Inteligentný Optimalizátor Logistického Uzla")
-st.markdown("Simulácia vyťaženosti rámp a čakacích dôb v reálnom čase.")
-
-# --- LOGIKA SIMULÁCIE (SimPy) ---
-def truck(env, name, repair_shop, wait_times, service_times):
-    arrival_time = env.now
-    with repair_shop.request() as request:
-        yield request
-        wait_time = env.now - arrival_time
-        wait_times.append(wait_time)
-        
-        service_duration = np.random.exponential(avg_service_time)
-        service_times.append(service_duration)
-        yield env.timeout(service_duration)
-
-def setup(env, num_ramps, arrival_rate, wait_times, service_times):
-    repair_shop = simpy.Resource(env, capacity=num_ramps)
-    i = 0
-    while True:
-        yield env.timeout(np.random.exponential(60.0 / arrival_rate))
-        i += 1
-        env.process(truck(env, f'Truck {i}', repair_shop, wait_times, service_times))
-
-wait_times = []
-service_times = []
-env = simpy.Environment()
-env.process(setup(env, num_ramps, arrival_rate, wait_times, service_times))
-env.run(until=sim_time)
-
-# --- VÝSLEDKY A METRIKY ---
-if wait_times:
-    avg_wait = np.mean(wait_times)
-    max_wait = np.max(wait_times)
-    utilization = (np.sum(service_times) / (num_ramps * sim_time)) * 100
-
-    # Zobrazenie veľkých ukazovateľov (Metriky)
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Priemerné čakanie", f"{avg_wait:.1f} min", delta_color="inverse")
-    col2.metric("Max. čakacia doba", f"{max_wait:.1f} min", delta_color="inverse")
-    col3.metric("Využitie rámp", f"{min(utilization, 100.0):.1f} %")
-
+    st.image("https://cdn-icons-png.flaticon.com/512/2312/2312732.png", width=100) # Ikona kamiónu
+    st.title("Parametre Uzla")
     st.divider()
-
-    # --- GRAFY ---
-    c1, c2 = st.columns(2)
     
-    with c1:
-        st.subheader("📊 Distribúcia čakacích dôb")
-        fig, ax = plt.subplots()
-        ax.hist(wait_times, bins=15, color='skyblue', edgecolor='black')
-        ax.set_xlabel("Čas (min)")
-        ax.set_ylabel("Počet vozidiel")
-        st.pyplot(fig)
+    num_ramps = st.number_input("Počet rámp", 1, 20, 3)
+    arrival_rate = st.slider("Príchody (vozidlá/hod)", 5, 120, 25)
+    avg_service_time = st.slider("Čas obsluhy (min)", 5, 90, 20)
+    
+    st.divider()
+    st.success("Tento model simuluje náhodné príchody vozidiel (Poissonov proces) a exponenciálnu dĺžku obsluhy.")
 
-    with c2:
-        st.subheader("📈 Analýza dát")
-        df = pd.DataFrame({"Čas čakania": wait_times})
-        st.dataframe(df, use_container_width=True)
+# --- SIMULAČNÝ ENGINE ---
+def run_simulation(num_ramps, arrival_rate, avg_service_time):
+    env = simpy.Environment()
+    repair_shop = simpy.Resource(env, capacity=num_ramps)
+    wait_times = []
+    service_times = []
+
+    def truck(env, repair_shop):
+        arrival = env.now
+        with repair_shop.request() as request:
+            yield request
+            wait_times.append(env.now - arrival)
+            duration = np.random.exponential(avg_service_time)
+            service_times.append(duration)
+            yield env.timeout(duration)
+
+    def setup(env):
+        while True:
+            yield env.timeout(np.random.exponential(60.0 / arrival_rate))
+            env.process(truck(env, repair_shop))
+
+    env.process(setup(env))
+    env.run(until=480) # 8 hodín
+    return wait_times, service_times
+
+# --- VÝPOČET A ZOBRAZENIE ---
+wait_times, service_times = run_simulation(num_ramps, arrival_rate, avg_service_time)
+
+# HLAVNÝ OBSAH
+st.title("📊 Logistics Terminal Optimizer")
+st.subheader("Optimalizácia kapacity a minimalizácia úzkych hrdiel")
+
+# Karty pre lepšiu navigáciu
+tab1, tab2, tab3 = st.tabs(["🎯 Dashboard", "🔍 Detailná Analýza", "📁 Export Dát"])
+
+with tab1:
+    if wait_times:
+        avg_wait = np.mean(wait_times)
+        utilization = (np.sum(service_times) / (num_ramps * 480)) * 100
         
-        # Tlačidlo na stiahnutie dát
-        csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Stiahnuť výsledky (CSV)", data=csv, file_name="simulacia_data.csv")
-else:
-    st.warning("Simulácia neprebehla, skúste zmeniť parametre.")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Priemerné čakanie", f"{avg_wait:.1f} min", 
+                  delta="- OK" if avg_wait < 15 else "+ KRITICKÉ", delta_color="inverse")
+        c2.metric("Využitie kapacity", f"{min(utilization, 100):.1f} %")
+        c3.metric("Odbavené vozidlá", len(wait_times))
+        
+        st.divider()
+        
+        # Graf vyťaženia počas dňa
+        st.subheader("Priebeh fronty v čase")
+        chart_data = pd.DataFrame({"Čakacia doba": wait_times})
+        st.area_chart(chart_data, use_container_width=True)
+
+with tab2:
+    col_left, col_right = st.columns(2)
+    with col_left:
+        st.write("### Rozdelenie čakacích dôb")
+        fig, ax = plt.subplots()
+        ax.hist(wait_times, bins=20, color='#2e7d32', edgecolor='white')
+        ax.set_title("Histogram (min)")
+        st.pyplot(fig)
+    with col_right:
+        st.write("### Štatistický prehľad")
+        st.write(pd.Series(wait_times).describe())
+
+with tab3:
+    st.write("### Stiahnuť kompletný report")
+    df_export = pd.DataFrame({"Vozidlo_ID": range(1, len(wait_times)+1), "Čakanie_min": wait_times})
+    st.dataframe(df_export, use_container_width=True)
+    st.download_button("Exportovať do Excelu (CSV)", df_export.to_csv().encode('utf-8'), "report.csv")
