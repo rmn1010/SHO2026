@@ -13,7 +13,7 @@ st.markdown("""
     .main { background-color: #f5f7f9; }
     .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     </style>
-    """, unsafe_all_tags=True)
+    """, unsafe_allow_html=True) # <--- TOTO JE SPRÁVNE
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -98,3 +98,4 @@ with tab3:
     df_export = pd.DataFrame({"Vozidlo_ID": range(1, len(wait_times)+1), "Čakanie_min": wait_times})
     st.dataframe(df_export, use_container_width=True)
     st.download_button("Exportovať do Excelu (CSV)", df_export.to_csv().encode('utf-8'), "report.csv")
+
